@@ -19,55 +19,51 @@ const KanbanBoard = () => {
     localStorage.setItem("tasks", JSON.stringify(tasks));
   }, [tasks]);
 
- 
-
   const handleDelete = (status, index) => {
     setTasks((prevTasks) => {
-        const updatedTasks = { ...prevTasks };
-        updatedTasks[status] = updatedTasks[status].filter((_, i) => i !== index);
-        return updatedTasks;
+      const updatedTasks = { ...prevTasks };
+      updatedTasks[status] = updatedTasks[status].filter((_, i) => i !== index);
+  
+      const updatedTasksWithNumbers = updateTaskNumbers(updatedTasks[status]);
+  
+      return {
+        ...updatedTasks,
+        [status]: updatedTasksWithNumbers,
+      };
     });
-};
+  };
+  
 
 
   const handleEditChange = (status, index, value) => {
     setTasks((prevTasks) => {
       const updatedTasks = [...prevTasks[status]];
-      updatedTasks[index] = value;
+      updatedTasks[index] = { ...updatedTasks[index], name: value };
       return { ...prevTasks, [status]: updatedTasks };
     });
   };
-
- 
+  
 
   const handleAddTask = (status) => {
-    
-    const existingNumbers = tasks[status]
-      .map((task) => {
-        const match = task.match(/\d+/);
-        return match ? parseInt(match[0]) : null;
-      })
-      .filter((num) => num !== null)
-      .sort((a, b) => a - b);
-  
-    
-    let nextNumber = existingNumbers.length > 0 ? existingNumbers[existingNumbers.length - 1] + 1 : 1;
-  
-    const newTask = `Task ${nextNumber}`;
-  
+    const newTask = { name: `Task ${tasks[status].length + 1}`, id: Date.now() };
     setTasks((prevTasks) => ({
       ...prevTasks,
       [status]: [...prevTasks[status], newTask],
     }));
   };
-  
-  
-  
 
+  const updateTaskNumbers = (tasksArray) => {
+    return tasksArray.map((task, index) => ({
+      ...task,
+      name: `${task.name.split(" ")[0]} ${index + 1}`,
+    }));
+  };
+  
   const onDragEnd = (result) => {
     if (!result.destination) return;
   
     const { source, destination } = result;
+  
     const sourceStatus = source.droppableId;
     const destinationStatus = destination.droppableId;
   
@@ -75,9 +71,12 @@ const KanbanBoard = () => {
       const updatedTasks = Array.from(tasks[sourceStatus]);
       const [movedTask] = updatedTasks.splice(source.index, 1);
       updatedTasks.splice(destination.index, 0, movedTask);
+  
+      const updatedTasksWithNumbers = updateTaskNumbers(updatedTasks);
+  
       setTasks((prevTasks) => ({
         ...prevTasks,
-        [sourceStatus]: updatedTasks,
+        [sourceStatus]: updatedTasksWithNumbers,
       }));
     } else {
       const sourceTasks = Array.from(tasks[sourceStatus]);
@@ -86,14 +85,18 @@ const KanbanBoard = () => {
       const [movedTask] = sourceTasks.splice(source.index, 1);
       destinationTasks.splice(destination.index, 0, movedTask);
   
+      const updatedSourceTasks = updateTaskNumbers(sourceTasks);
+      const updatedDestinationTasks = updateTaskNumbers(destinationTasks);
+  
       setTasks((prevTasks) => ({
         ...prevTasks,
-        [sourceStatus]: sourceTasks,
-        [destinationStatus]: destinationTasks,
+        [sourceStatus]: updatedSourceTasks,
+        [destinationStatus]: updatedDestinationTasks,
       }));
     }
   };
   
+
 
   return (
     <div className="container mt-5">
@@ -126,8 +129,8 @@ const KanbanBoard = () => {
                     >
                       {items.map((task, index) => (
                         <Draggable
-                          key={`${status}-${index}`}
-                          draggableId={`${status}-${index}`}
+                          key={`${status}-${task.id}`}
+                          draggableId={`${status}-${task.id}`}
                           index={index}
                         >
                           {(provided) => (
@@ -143,34 +146,24 @@ const KanbanBoard = () => {
                                 borderRadius: "5px",
                                 boxShadow: "0px 2px 4px rgba(0,0,0,0.1)",
                                 minHeight: "50px",
-                                maxHeight:"120px",
+                                maxHeight: "120px",
                                 wordBreak: "break-word",
                                 whiteSpace: "pre-wrap",
-                                overflowY:
-                                  "auto" ,
-                                scrollbarWidth:
-                                  "thin",
-                                scrollbarColor:
-                                  "#ccc transparent" ,
+                                overflowY: "auto",
+                                scrollbarWidth: "thin",
+                                scrollbarColor: "#ccc transparent",
                               }}
                             >
                               {editingTask.status === status &&
                               editingTask.index === index ? (
                                 <input
                                   type="text"
-                                  value={task}
+                                  value={task.name}  
                                   onChange={(e) =>
-                                    handleEditChange(
-                                      status,
-                                      index,
-                                      e.target.value
-                                    )
+                                    handleEditChange(status, index, e.target.value)
                                   }
                                   onBlur={() =>
-                                    setEditingTask({
-                                      status: null,
-                                      index: null,
-                                    })
+                                    setEditingTask({ status: null, index: null })
                                   }
                                   autoFocus
                                   style={{
@@ -186,15 +179,13 @@ const KanbanBoard = () => {
                                   }}
                                 />
                               ) : (
-                                <span style={{ maxWidth: "85%" }}>{task}</span>
+                                <span style={{ maxWidth: "85%" }}>{task.name}</span>
                               )}
                               <div className="task-icons">
                                 <i
                                   className="bi bi-pencil text-dark fw-bolder mx-1"
                                   style={{ cursor: "pointer" }}
-                                  onClick={() =>
-                                    setEditingTask({ status, index })
-                                  }
+                                  onClick={() => setEditingTask({ status, index })}
                                 ></i>
                                 <i
                                   className="bi bi-trash text-dark fw-bolder mx-1"
