@@ -19,13 +19,16 @@ const KanbanBoard = () => {
     localStorage.setItem("tasks", JSON.stringify(tasks));
   }, [tasks]);
 
+ 
+
   const handleDelete = (status, index) => {
     setTasks((prevTasks) => {
-      const updatedTasks = { ...prevTasks };
-      updatedTasks[status].splice(index, 1);
-      return updatedTasks;
+        const updatedTasks = { ...prevTasks };
+        updatedTasks[status] = updatedTasks[status].filter((_, i) => i !== index);
+        return updatedTasks;
     });
-  };
+};
+
 
   const handleEditChange = (status, index, value) => {
     setTasks((prevTasks) => {
@@ -35,21 +38,39 @@ const KanbanBoard = () => {
     });
   };
 
+ 
+
   const handleAddTask = (status) => {
-    const newTask = `New Task ${tasks[status].length + 1}`;
+    
+    const existingNumbers = tasks[status]
+      .map((task) => {
+        const match = task.match(/\d+/);
+        return match ? parseInt(match[0]) : null;
+      })
+      .filter((num) => num !== null)
+      .sort((a, b) => a - b);
+  
+    
+    let nextNumber = existingNumbers.length > 0 ? existingNumbers[existingNumbers.length - 1] + 1 : 1;
+  
+    const newTask = `Task ${nextNumber}`;
+  
     setTasks((prevTasks) => ({
       ...prevTasks,
       [status]: [...prevTasks[status], newTask],
     }));
   };
+  
+  
+  
 
   const onDragEnd = (result) => {
     if (!result.destination) return;
-
+  
     const { source, destination } = result;
     const sourceStatus = source.droppableId;
     const destinationStatus = destination.droppableId;
-
+  
     if (sourceStatus === destinationStatus) {
       const updatedTasks = Array.from(tasks[sourceStatus]);
       const [movedTask] = updatedTasks.splice(source.index, 1);
@@ -61,10 +82,10 @@ const KanbanBoard = () => {
     } else {
       const sourceTasks = Array.from(tasks[sourceStatus]);
       const destinationTasks = Array.from(tasks[destinationStatus]);
-
+  
       const [movedTask] = sourceTasks.splice(source.index, 1);
-      destinationTasks.push(movedTask);
-
+      destinationTasks.splice(destination.index, 0, movedTask);
+  
       setTasks((prevTasks) => ({
         ...prevTasks,
         [sourceStatus]: sourceTasks,
@@ -72,6 +93,7 @@ const KanbanBoard = () => {
       }));
     }
   };
+  
 
   return (
     <div className="container mt-5">
